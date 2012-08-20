@@ -17,8 +17,8 @@ import "C"
 import (
 	"database/sql"
 	"database/sql/driver"
-	"io"
 	"errors"
+	"io"
 	"unsafe"
 )
 
@@ -161,7 +161,6 @@ func (result Result) RowsAffected() (int64, error) {
 	return result.rowsAffected, nil
 }
 
-
 type Rows struct {
 	stmt *C.sqlite3_stmt
 }
@@ -212,5 +211,3 @@ func (rows Rows) Next(dest []driver.Value) error {
 	}
 	return nil
 }
-
-

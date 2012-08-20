@@ -28,7 +28,7 @@ func TestDriver(t *testing.T) {
 
 	const n = 3
 	for i := 0; i < n; i++ {
-		result, err = db.Exec("insert into testtable (id, name) values (?, ?);", i * 100, "hogehoge")
+		result, err = db.Exec("insert into testtable (id, name) values (?, ?);", i*100, "hogehoge")
 		if result == nil {
 			t.Error("result is nil")
 		}
@@ -63,7 +63,7 @@ func TestDriver(t *testing.T) {
 		var id int
 		var name string
 		rows.Scan(&id, &name)
-		if id != i * 100 {
+		if id != i*100 {
 			t.Error("invalid id value", id)
 		}
 		if name != "hogehoge" {
