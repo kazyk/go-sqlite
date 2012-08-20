@@ -6,9 +6,6 @@ package sqlite
 #include <stdlib.h>
 #include <strings.h>
 
-int exec(sqlite3 *db, const char *sql) {
-	return sqlite3_exec(db, sql, NULL, NULL, NULL);
-}
 int bind_text(sqlite3_stmt *stmt, int i, const char *str, int n) {
 	return sqlite3_bind_text(stmt, i, str, n, SQLITE_TRANSIENT);
 }
