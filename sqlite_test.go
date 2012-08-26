@@ -144,3 +144,31 @@ func TestTransactionCommit(t *testing.T) {
 		assert(t, id == 1000, "unexpected id:", id)
 	}
 }
+
+func TestTypes(t *testing.T) {
+	db, _ := sql.Open("sqlite", "testdb")
+	defer db.Close()
+
+	_, err := db.Exec(`create table testtypes (
+		id integer,
+		name text,
+		nil text,
+		fl float);`)
+	assert(t, err == nil)
+	defer db.Exec("drop table testtypes;")
+
+	_, err = db.Exec("insert into testtypes (id, name, nil, fl) values (?, ?, ?, ?);",
+		100, "testname", nil, 10.11)
+	assert(t, err == nil)
+
+	row := db.QueryRow("select * from testtypes;")
+	var id int
+	var name string
+	var nnil interface{}
+	var fl float64
+	row.Scan(&id, &name, &nnil, &fl)
+	assert(t, id == 100, "unexpected id:", id)
+	assert(t, name == "testname", "unexpected name:", name)
+	assert(t, nnil == nil)
+	assert(t, fl == 10.11, "unexpected fl:", fl)
+}
