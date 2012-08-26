@@ -66,7 +66,13 @@ func (conn Conn) Close() error {
 }
 
 func (conn Conn) Begin() (driver.Tx, error) {
-	panic("not supported yet")
+	sql := C.CString("begin;")
+	defer C.free(unsafe.Pointer(sql))
+	r := C.sqlite3_exec(conn.db, sql, nil, nil, nil)
+	if r != C.SQLITE_OK {
+		return nil, driver.ErrBadConn
+	}
+	return &Tx{db: conn.db}, nil
 }
 
 type Stmt struct {
@@ -205,6 +211,30 @@ func (rows Rows) Next(dest []driver.Value) error {
 		default:
 			panic("unsupported type")
 		}
+	}
+	return nil
+}
+
+type Tx struct {
+	db *C.sqlite3
+}
+
+func (tx Tx) Commit() error {
+	sql := C.CString("commit;")
+	defer C.free(unsafe.Pointer(sql))
+	r := C.sqlite3_exec(tx.db, sql, nil, nil, nil)
+	if r != C.SQLITE_OK {
+		return driver.ErrBadConn
+	}
+	return nil
+}
+
+func (tx Tx) Rollback() error {
+	sql := C.CString("rollback;")
+	defer C.free(unsafe.Pointer(sql))
+	r := C.sqlite3_exec(tx.db, sql, nil, nil, nil)
+	if r != C.SQLITE_OK {
+		return driver.ErrBadConn
 	}
 	return nil
 }

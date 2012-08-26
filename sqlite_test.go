@@ -2,12 +2,25 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
+	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func assert(t *testing.T, s bool, args ...interface{}) {
 	if !s {
-		t.Error(args...)
+		_, file, line, ok := runtime.Caller(1)
+		if ok {
+			file = filepath.Base(file)
+			msg := fmt.Sprintf("failed in %v:%v", file, line)
+			a := make([]interface{}, 0)
+			a = append(a, msg)
+			a = append(a, args...)
+			t.Error(a)
+		} else {
+			t.Error(args...)
+		}
 	}
 }
 
@@ -53,4 +66,81 @@ func TestDriver(t *testing.T) {
 	}
 
 	assert(t, i == n)
+}
+
+func TestTransactionRollback(t *testing.T) {
+	db, _ := sql.Open("sqlite", "testdb")
+	defer db.Close()
+	_, err := db.Exec("create table testtx (id integer primary key);")
+	assert(t, err == nil)
+	defer db.Exec("drop table testtx;")
+
+	db.Exec("insert into testtx (id) values (100);")
+	row := db.QueryRow("select * from testtx;")
+	var id int
+	row.Scan(&id)
+	assert(t, id == 100)
+
+	{
+		tx, err := db.Begin()
+		assert(t, tx != nil)
+		assert(t, err == nil)
+
+		_, err = tx.Exec("update testtx set id = 1000;")
+		assert(t, err == nil)
+		row := tx.QueryRow("select * from testtx;")
+		var id int
+		row.Scan(&id)
+		assert(t, id == 1000)
+		err = tx.Rollback()
+		assert(t, err == nil)
+	}
+
+	{
+		db,_ := sql.Open("sqlite", "testdb")
+		defer db.Close()
+		row := db.QueryRow("select * from testtx;")
+		var id int
+		row.Scan(&id)
+		assert(t, id == 100)
+	}
+}
+
+func TestTransactionCommit(t *testing.T) {
+	db, _ := sql.Open("sqlite", "testdb")
+	defer db.Close()
+
+	_, err := db.Exec("create table testtx (id integer primary key);")
+	assert(t, err == nil)
+	defer db.Exec("drop table testtx;")
+
+	db.Exec("insert into testtx (id) values (100);")
+	row := db.QueryRow("select * from testtx;")
+	var id int
+	row.Scan(&id)
+	assert(t, id == 100)
+
+	{
+		tx, err := db.Begin()
+		assert(t, tx != nil)
+		assert(t, err == nil)
+
+		_, err = tx.Exec("update testtx set id = 1000;")
+		assert(t, err == nil)
+		row := tx.QueryRow("select * from testtx;")
+		var id int
+		row.Scan(&id)
+		assert(t, id == 1000)
+		err = tx.Commit()
+		assert(t, err == nil)
+	}
+
+	{
+		db,_ := sql.Open("sqlite", "testdb")
+		defer db.Close()
+		row := db.QueryRow("select * from testtx;")
+		var id int
+		row.Scan(&id)
+		assert(t, id == 1000, "unexpected id:", id)
+	}
 }
