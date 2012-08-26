@@ -9,4 +9,3 @@ not supported
 
 - blob
 - datetime
-- transaction
