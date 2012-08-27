@@ -52,7 +52,7 @@ func (conn Conn) Prepare(query string) (driver.Stmt, error) {
 	r := C.sqlite3_prepare_v2(conn.db, s, l, &stmt.stmt, &tail)
 
 	if r != C.SQLITE_OK {
-		return &stmt, driver.ErrBadConn
+		return &stmt, dbError(conn.db)
 	}
 	return &stmt, nil
 }
@@ -70,7 +70,7 @@ func (conn Conn) Begin() (driver.Tx, error) {
 	defer C.free(unsafe.Pointer(sql))
 	r := C.sqlite3_exec(conn.db, sql, nil, nil, nil)
 	if r != C.SQLITE_OK {
-		return nil, driver.ErrBadConn
+		return nil, dbError(conn.db)
 	}
 	return &Tx{db: conn.db}, nil
 }
@@ -93,7 +93,7 @@ func (stmt Stmt) NumInput() int {
 
 func (stmt Stmt) bind(args []driver.Value) error {
 	if C.sqlite3_clear_bindings(stmt.stmt) != C.SQLITE_OK {
-		return driver.ErrBadConn
+		return stmtError(stmt.stmt)
 	}
 	for i, arg := range args {
 		r := C.int(-1)
@@ -120,7 +120,7 @@ func (stmt Stmt) bind(args []driver.Value) error {
 		}
 
 		if r != C.SQLITE_OK {
-			return driver.ErrBadConn
+			return stmtError(stmt.stmt)
 		}
 	}
 	return nil
@@ -135,7 +135,7 @@ func (stmt Stmt) Exec(args []driver.Value) (driver.Result, error) {
 	db := C.sqlite3_db_handle(stmt.stmt)
 
 	if r != C.SQLITE_DONE && r != C.SQLITE_ROW {
-		return nil, errors.New(C.GoString(C.sqlite3_errmsg(db)))
+		return nil, dbError(db)
 	}
 
 	var result Result
@@ -190,8 +190,7 @@ func (rows Rows) Next(dest []driver.Value) error {
 		return io.EOF
 	}
 	if r != C.SQLITE_ROW {
-		db := C.sqlite3_db_handle(rows.stmt)
-		return errors.New(C.GoString(C.sqlite3_errmsg(db)))
+		return stmtError(rows.stmt)
 	}
 
 	count := len(dest)
@@ -224,7 +223,7 @@ func (tx Tx) Commit() error {
 	defer C.free(unsafe.Pointer(sql))
 	r := C.sqlite3_exec(tx.db, sql, nil, nil, nil)
 	if r != C.SQLITE_OK {
-		return driver.ErrBadConn
+		return dbError(tx.db)
 	}
 	return nil
 }
@@ -234,7 +233,15 @@ func (tx Tx) Rollback() error {
 	defer C.free(unsafe.Pointer(sql))
 	r := C.sqlite3_exec(tx.db, sql, nil, nil, nil)
 	if r != C.SQLITE_OK {
-		return driver.ErrBadConn
+		return dbError(tx.db)
 	}
 	return nil
+}
+
+func dbError(db *C.sqlite3) error {
+	return errors.New(C.GoString(C.sqlite3_errmsg(db)))
+}
+
+func stmtError(stmt *C.sqlite3_stmt) error {
+	return dbError(C.sqlite3_db_handle(stmt))
 }
