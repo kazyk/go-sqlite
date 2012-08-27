@@ -59,7 +59,7 @@ func (conn Conn) Prepare(query string) (driver.Stmt, error) {
 
 func (conn Conn) Close() error {
 	r := C.sqlite3_close(conn.db)
-	if r == C.SQLITE_OK {
+	if r != C.SQLITE_OK {
 		return driver.ErrBadConn
 	}
 	return nil
