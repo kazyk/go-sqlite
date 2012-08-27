@@ -24,7 +24,7 @@ func assert(t *testing.T, s bool, args ...interface{}) {
 	}
 }
 
-// rouch tests
+// rough tests
 
 func TestDriver(t *testing.T) {
 	db, err := sql.Open("sqlite", "testdb")
